@@ -23,8 +23,29 @@ get_circonscriptions <- function(dpt){
   data_frame( dpt = dpt, circ = circ )
 }
 
+get_mentions <- function(dpt, circ, pb){
+  setTxtProgressBar( pb, getTxtProgressBar(pb) + 1)
+  url <- sprintf("http://elections.interieur.gouv.fr/legislatives-2017/%s/%s.html", dpt, circ )
+
+  data <- read_html(url) %>%
+    html_node(".tableau-mentions") %>%
+    html_table()
+
+  Nombre <- as.numeric(str_replace( data$Nombre, " ", "" ))
+  data_frame(
+    Inscrits = Nombre[1],
+    Abstentions = Nombre[2],
+    Votants = Nombre[3],
+    Blancs = Nombre[4],
+    Nuls = Nombre[5],
+    Exprimes = Nombre[6]
+  )
+
+}
+
 get_resultats <- function(dpt, circ, pb){
   setTxtProgressBar( pb, getTxtProgressBar(pb) + 1)
+
   url <- sprintf("http://elections.interieur.gouv.fr/legislatives-2017/%s/%s.html", dpt, circ )
   read_html(url) %>%
     html_node(".tableau-resultats-listes-ER") %>%
@@ -46,6 +67,11 @@ get_resultats <- function(dpt, circ, pb){
 data <- departements %>%
   map(get_circonscriptions) %>%
   bind_rows()
+
+pb <- txtProgressBar(min = 0, max = nrow(data), style = 3)
+data <- data %>%
+  mutate( res = map2(dpt, circ, get_mentions, pb = pb) ) %>%
+  unnest()
 
 pb <- txtProgressBar(min = 0, max = nrow(data), style = 3)
 data <- data %>%
