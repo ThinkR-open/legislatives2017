@@ -54,7 +54,7 @@ data <- data %>%
   mutate(
     Nuances = as_factor(Nuances),
     dpt = str_replace( dpt, "^0+", "" ),
-    circ = str_replace( circ, "^\\d{3}0+", "" ),
+    circ = str_replace( circ, "^\\d{3}0*", "" ),
     resultat = fct_recode( as_factor(resultat), elu = "Oui", ballotage = "Ballotage", elimine = "Non" )
   )
 
