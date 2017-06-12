@@ -5,19 +5,15 @@ library(tibble)
 library(dplyr)
 library(forcats)
 
-departements <- read_html("http://elections.interieur.gouv.fr/legislatives-2017/") %>%
-  html_nodes( "option" ) %>%
-  html_attr("value") %>%
-  str_subset( "^\\d+/" ) %>%
-  str_replace( "/.*$", "")
+get_circonscriptions <- function(dpt, pb){
+  setTxtProgressBar( pb, getTxtProgressBar(pb) + 1)
 
-get_circonscriptions <- function(dpt){
   url <- sprintf( "http://elections.interieur.gouv.fr/legislatives-2017/%s/index.html", dpt )
   circ <- read_html(url) %>%
     html_nodes(".pub-index-communes") %>%
     html_nodes("a") %>%
     html_attr("href") %>%
-    str_subset( "^.*/\\d{5}[.]html$" ) %>%
+    str_subset( "^.*/[0-9]{2}[0-9AB][0-9]{2}[.]html$" ) %>%
     str_replace( ".*/(.*)[.]html$", "\\1" )
 
   data_frame( dpt = dpt, circ = circ )
@@ -64,15 +60,25 @@ get_resultats <- function(dpt, circ, pb){
     )
 }
 
+departements <- read_html("http://elections.interieur.gouv.fr/legislatives-2017/") %>%
+  html_nodes( "option" ) %>%
+  html_attr("value") %>%
+  str_subset( "index[.]html$" ) %>%
+  str_replace( "/.*$", "")
+
+message("circonscriptions")
+pb <- txtProgressBar(min = 0, max = length(departements), style = 3)
 data <- departements %>%
-  map(get_circonscriptions) %>%
+  map(get_circonscriptions, pb = pb) %>%
   bind_rows()
 
+message("participation")
 pb <- txtProgressBar(min = 0, max = nrow(data), style = 3)
 data <- data %>%
   mutate( res = map2(dpt, circ, get_mentions, pb = pb) ) %>%
   unnest()
 
+message("resultats")
 pb <- txtProgressBar(min = 0, max = nrow(data), style = 3)
 data <- data %>%
   mutate( res = map2(dpt, circ, get_resultats, pb = pb) ) %>%
