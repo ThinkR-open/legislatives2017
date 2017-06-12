@@ -1,6 +1,6 @@
 library(readr)
 library(dplyr)
-library(rgdal)
+library(geojsonio)
 
-circos <- readOGR( "data-raw", "circosSHP_v3")
-use_data(circos, overwrite = TRUE)
+circos <- geojson_read( "data-raw/france-circonscriptions-legislatives-2012.json", method = "local", what = "sp")
+use_data( circos, overwrite = TRUE )
