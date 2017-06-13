@@ -123,8 +123,8 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = 1, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = 1, bringToFront = TRUE),
+      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
@@ -166,8 +166,8 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = 1, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = 1, bringToFront = TRUE),
+      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
@@ -208,8 +208,8 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = 1, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = 1, bringToFront = TRUE),
+      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
