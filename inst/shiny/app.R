@@ -182,7 +182,7 @@ server <- shinyServer(function(input, output){
       select(nom_dpt, num_circ,candidat, Nuances, Score) %>%
       mutate( nom_dpt = str_to_title(nom_dpt) ) %>%
       arrange( desc(Score) )
-    DT::datatable( data )
+    DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "200px") )
   })
 
   data_ballotage <- reactive({
@@ -221,7 +221,7 @@ server <- shinyServer(function(input, output){
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
       select( candidat, nom_dpt, circ, Score )
-    DT::datatable( data )
+    DT::datatable( data , filter = "top", options = list(pageLength = 20, scrollY = "200px") )
   })
 
   output$n_ballotage <- renderText({
