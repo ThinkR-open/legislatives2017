@@ -23,7 +23,8 @@ couleurs <- c(
 
   ECO = "green",
 
-  COM = "gray",
+  COM = "red",
+
   DIV = "gray",
   REG = "gray"
 
