@@ -312,9 +312,6 @@ server <- shinyServer(function(input, output){
       dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
   })
 
-
-
-
 })
 
 shinyApp( ui = ui, server = server )
