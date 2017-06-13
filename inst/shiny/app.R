@@ -29,6 +29,7 @@ couleurs <- c(
 
 )
 
+nuances <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
@@ -58,7 +59,26 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
       DT::dataTableOutput("data_premier")
     )
+  ),
+
+  tabPanel("Ballotages par parti",
+
+    div( class = "fullpage",
+      leafletOutput( "carte_ballotage", width="100%", height="100%" )
+    ),
+
+    absolutePanel( class = "panel panel-default panel-side",
+      fixed = TRUE, draggable = TRUE,
+      top = 60, left = "auto", right = 20, bottom = "auto",
+      width = 500, height= "auto",
+
+      selectInput("sel_ballotage", label = "Nuance", choices = nuances, selected = "FI"),
+      textOutput("n_ballotage"),
+      tags$hr(),
+      DT::dataTableOutput("data_ballotage")
+    )
   )
+
 
 )
 
@@ -143,6 +163,49 @@ server <- shinyServer(function(input, output){
     DT::datatable( data )
   })
 
+  data_ballotage <- reactive({
+    nuance <- input$sel_ballotage
+
+    filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
+      left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
+      mutate( Score = round( 100* Voix / Exprimes, 2) )
+
+  })
+
+
+  output$carte_ballotage <- renderLeaflet({
+    nuance <- input$sel_ballotage
+    data <- data_ballotage()
+
+    col  <- unname(couleurs[nuance])
+
+    # labels <- data_premier$summary %>% map(HTML)
+
+    circos <- circos[ na.omit(match( data$ID, circos@data$ID)),  ]
+
+    leaflet(circos) %>%
+      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
+      setView(lng = 5, lat= 47, zoom=6) %>%
+      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = 1, # label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = 1, bringToFront = TRUE),
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "15px",
+          direction = "auto"
+        )
+      )
+  })
+
+  output$data_ballotage <- DT::renderDataTable({
+    data <- data_ballotage() %>%
+      select( candidat, nom_dpt, circ, Score )
+    DT::datatable( data )
+  })
+
+  output$n_ballotage <- renderText({
+    nuance <- input$sel_ballotage
+    sprintf( "%s. %d candidat(e)s en ballotage", nuance, nrow(data_ballotage())  )
+  })
 
 })
 
