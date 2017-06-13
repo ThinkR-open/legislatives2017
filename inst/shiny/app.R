@@ -11,7 +11,15 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
   tabPanel("Abstention",
     div( class = "fullpage",
       leafletOutput( "carte_abstention", width="100%", height="100%" )
+    ),
+    absolutePanel( class = "panel panel-default panel-side",
+      fixed = TRUE, draggable = TRUE,
+      top = 60, left = "auto", right = 20, bottom = "auto",
+      width = 400, height= "auto",
+
+      DT::dataTableOutput("data_abstention")
     )
+
   )
 
 )
@@ -27,6 +35,7 @@ server <- shinyServer(function(input, output){
   output$carte_abstention <- renderLeaflet({
     abst <- data_abstention$p_abstention
     col <- gray( 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) ) )
+    # col <- gray( 1 - abst)
 
     labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", str_to_title(nom_dpt), num_circ, Inscrits, Abstentions, round(100*p_abstention, 2 ) )) %>%
       map(HTML)
@@ -44,6 +53,15 @@ server <- shinyServer(function(input, output){
       )
   })
 
+  output$data_abstention <- DT::renderDataTable({
+    data <- select(data_abstention, nom_dpt, num_circ, p_abstention ) %>%
+      arrange( desc(p_abstention) ) %>%
+      mutate(
+        p_abstention = round(100*p_abstention,2),
+        nom_dpt = str_to_title(nom_dpt)
+      )
+    DT::datatable( data )
+  })
 
 })
 
