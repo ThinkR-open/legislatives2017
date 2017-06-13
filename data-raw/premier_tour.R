@@ -120,7 +120,7 @@ premier_tour <- premier_tour %>%
           civilite = ifelse(grepl("M\\.", candidat), "M.","Mme"),
           candidat = str_replace_all(candidat, "Mm?e?\\.? ", "")
  )
-premier_tour <- premier_tour[,c(1:8,15,9:14)]
+premier_tour <- premier_tour[,c(1:8,15,9:14)] %>% as_tibble()
 
 devtools::use_data( premier_tour, overwrite = TRUE )
 
