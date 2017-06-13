@@ -35,11 +35,13 @@ thinkr_link <- function(){
     style = "z-index: 1000",
     fixed = TRUE, draggable = TRUE,
     top  = 0, left = "auto", right = 20,
-    width = "150px",
+    width = "300px",
 
     div(
       tags$a( href = "http://www.thinkr.fr", tags$img(src="thinkR.png", height = "30px") ),
-      tags$a( href = "https://github.com/ThinkRstat/legislatives2017", tags$img(src="https://cdn0.iconfinder.com/data/icons/octicons/1024/mark-github-256.png", height = "30px") )
+      tags$a( href = "https://github.com/ThinkRstat/legislatives2017", tags$img(src="https://cdn0.iconfinder.com/data/icons/octicons/1024/mark-github-256.png", height = "30px") ),
+      tags$a( href = "https://www.facebook.com/pages/ThinkR/1849613191973338", tags$img(src="https://www.seeklogo.net/wp-content/uploads/2016/09/facebook-icon-preview-1-400x400.png", height = "30px") ),
+      tags$a( href = "https://twitter.com/thinkR_fr", tags$img(src="https://static1.squarespace.com/static/5717605262cd946fdbf0d653/57684bdcd482e993d4892dd8/57684befd482e993d4892e5d/1466453014111/Logo-twitter-oiseau-bleu.png?format=1500w", height = "30px") )
     )
 
   )
