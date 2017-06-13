@@ -116,6 +116,10 @@ fix_circ <- function(circ){
 }
 
 premier_tour <- premier_tour %>%
-  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ) )
+  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ),
+          civilite = ifelse(grepl("M\\.", candidat), "M.","Mme"),
+          candidat = str_replace_all(candidat, "Mm?e?\\.? ", ""))
+
+premier_tour <- premier_tour[,c(1:8,15,9:14)]
 
 devtools::use_data( premier_tour, overwrite = TRUE )
