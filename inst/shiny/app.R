@@ -77,7 +77,13 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       top = 60, left = "auto", right = 20, bottom = "auto",
       width = 500, height= "auto",
 
-      DT::dataTableOutput("data_premier")
+      DT::dataTableOutput("data_premier"),
+
+      hr(),
+
+      textOutput("selected_circonscription"),
+      br(),
+      DT::dataTableOutput("data_premier_details")
     ),
     thinkr_link()
   ),
@@ -115,7 +121,6 @@ server <- shinyServer(function(input, output){
   output$carte_abstention <- renderLeaflet({
     abst <- data_abstention$p_abstention
     col <- gray( 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) ) )
-    # col <- gray( 1 - abst)
 
     labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", str_to_title(nom_dpt), num_circ, Inscrits, Abstentions, round(100*p_abstention, 2 ) )) %>%
       map(HTML)
@@ -123,8 +128,8 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
+      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .5, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .5, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
@@ -166,14 +171,50 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
+      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .5, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .5, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
           direction = "auto"
-        )
+        ),
+        layerId = paste(circos@data$code_dpt, "-", circos@data$num_circ, sep = "")
       )
+  })
+
+  selected <- eventReactive(input$carte_premier_shape_click, {
+    click <- strsplit(input$carte_premier_shape_click$id, "-")[[1]]
+    list( dpt_ = click[1], circ_ = click[2])
+  })
+
+  data_premier_details <- reactive({
+    sel <- selected()
+
+    data <- premier_tour %>%
+      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      mutate( Score=round(100*Voix/Exprimes, 2)) %>%
+      select( candidat, Nuances, Voix, Score, resultat ) %>%
+      arrange( desc(Voix) )
+
+  })
+
+  output$data_premier_details <- DT::renderDataTable({
+    DT::datatable( data_premier_details(), options = list(pageLength = 5) )
+  })
+
+  output$selected_circonscription <- renderText({
+    sel <- selected()
+    dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
+      head(1) %$%
+      nom_dpt %>%
+      str_to_title()
+
+    data <- premier_tour %>%
+      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      head(1)
+
+    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
   })
 
 
@@ -182,8 +223,8 @@ server <- shinyServer(function(input, output){
       select(nom_dpt, num_circ,candidat, Nuances, Score) %>%
       mutate( nom_dpt = str_to_title(nom_dpt) ) %>%
       arrange( desc(Score) )
-    DT::datatable( data )
-  })
+    DT::datatable( data, options = list(pageLength = 5) )
+  } )
 
   data_ballotage <- reactive({
     nuance <- input$sel_ballotage
@@ -208,8 +249,8 @@ server <- shinyServer(function(input, output){
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = 1, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
+      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .5, label = labels,
+        highlightOptions = highlightOptions(weight = 2, fillOpacity = .5, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
