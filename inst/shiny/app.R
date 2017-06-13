@@ -102,7 +102,13 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       selectInput("sel_ballotage", label = "Nuance", choices = nuances, selected = "FI"),
       textOutput("n_ballotage"),
       tags$hr(),
-      DT::dataTableOutput("data_ballotage")
+      DT::dataTableOutput("data_ballotage"),
+
+      hr(),
+
+      textOutput("selected_ballotage_circonscription"),
+      br(),
+      DT::dataTableOutput("data_ballotage_details")
     ),
     thinkr_link()
   )
@@ -231,7 +237,8 @@ server <- shinyServer(function(input, output){
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
       left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
-      mutate( Score = round( 100* Voix / Exprimes, 2) )
+      mutate( Score = round( 100* Voix / Exprimes, 2) ) %>%
+      arrange( desc(Score) )
 
   })
 
@@ -255,20 +262,58 @@ server <- shinyServer(function(input, output){
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
           direction = "auto"
-        )
+        ),
+        layerId = paste(circos@data$code_dpt, "-", circos@data$num_circ, sep = "")
       )
   })
 
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
       select( candidat, nom_dpt, circ, Score )
-    DT::datatable( data )
+    DT::datatable( data, options = list(pageLength = 5) )
   })
 
   output$n_ballotage <- renderText({
     nuance <- input$sel_ballotage
     sprintf( "%s. %d candidat(e)s en ballotage", nuance, nrow(data_ballotage())  )
   })
+
+  selected_ballotage <- eventReactive(input$carte_ballotage_shape_click, {
+    click <- strsplit(input$carte_ballotage_shape_click$id, "-")[[1]]
+    list( dpt_ = click[1], circ_ = click[2])
+  })
+
+  data_ballotage_details <- reactive({
+    sel <- selected_ballotage()
+    data <- premier_tour %>%
+      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      mutate( Score=round(100*Voix/Exprimes, 2)) %>%
+      select( candidat, Nuances, Voix, Score, resultat ) %>%
+      arrange( desc(Voix) )
+
+  })
+
+  output$data_ballotage_details <- DT::renderDataTable({
+    DT::datatable( data_ballotage_details(), options = list(pageLength = 5) )
+  })
+
+  output$selected_ballotage_circonscription <- renderText({
+    sel <- selected_ballotage()
+    dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
+      head(1) %$%
+      nom_dpt %>%
+      str_to_title()
+
+    data <- premier_tour %>%
+      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      head(1)
+
+    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
+  })
+
+
+
 
 })
 
