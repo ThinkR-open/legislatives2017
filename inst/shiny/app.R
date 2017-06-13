@@ -140,7 +140,7 @@ server <- shinyServer(function(input, output){
         p_abstention = round(100*p_abstention,2),
         nom_dpt = str_to_title(nom_dpt)
       )
-    DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "200px"))
+    DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "350px"))
   })
 
 
