@@ -89,7 +89,33 @@ data <- data %>%
     circ = str_replace( circ, "^\\d{3}0*", "" ),
     resultat = fct_recode( as_factor(resultat), elu = "Oui", ballotage = "Ballotage", elimine = "Non" )
   )
-
 premier_tour <- data
+
+fix_dpt <- function(dpt){
+  dpt[ dpt == "971" ] <- "ZA"
+  dpt[ dpt == "972" ] <- "ZB"
+  dpt[ dpt == "973" ] <- "ZC"
+  dpt[ dpt == "974" ] <- "ZD"
+  dpt[ dpt == "976" ] <- "ZM"
+  dpt[ dpt == "988" ] <- "ZN"
+  dpt[ dpt == "987" ] <- "ZP"
+  dpt[ dpt == "975" ] <- "ZS"
+  dpt[ dpt == "986" ] <- "ZW"
+  dpt[ dpt == "977" ] <- "ZX"
+
+  dpt[ grepl("^\\d$", dpt) ] <- sprintf("%02d", as.numeric(dpt[ grepl("^\\d$", dpt ) ]))
+
+  dpt
+}
+
+fix_circ <- function(circ){
+  circ %>%
+    str_replace( "^.*[AB]", "" ) %>%
+    as.numeric()
+}
+
+premier_tour <- premier_tour %>%
+  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ) )
+
 use_data( premier_tour, overwrite = TRUE )
 
