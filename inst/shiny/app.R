@@ -21,10 +21,11 @@ couleurs <- c(
   EXD = "black",
   DLF = "blue",
 
+  ECO = "green",
+
   COM = "gray",
   DIV = "gray",
-  REG = "gray",
-  ECO = "gray"
+  REG = "gray"
 
 )
 
