@@ -30,6 +30,22 @@ couleurs <- c(
 
 )
 
+thinkr_link <- function(){
+  absolutePanel( class = "panel panel-default panel-side",
+    style = "z-index: 1000",
+    fixed = TRUE, draggable = TRUE,
+    top  = 0, left = "auto", right = 20,
+    width = "150px",
+
+    div(
+      tags$a( href = "http://www.thinkr.fr", tags$img(src="thinkR.png", height = "30px") ),
+      tags$a( href = "https://github.com/ThinkRstat/legislatives2017", tags$img(src="https://cdn0.iconfinder.com/data/icons/octicons/1024/mark-github-256.png", height = "30px") )
+    )
+
+  )
+}
+
+
 nuances <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
@@ -44,7 +60,8 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       width = 400, height= "auto",
 
       DT::dataTableOutput("data_abstention")
-    )
+    ),
+    thinkr_link()
   ),
 
   tabPanel("Premier",
@@ -59,7 +76,8 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       width = 500, height= "auto",
 
       DT::dataTableOutput("data_premier")
-    )
+    ),
+    thinkr_link()
   ),
 
   tabPanel("Ballotages par parti",
@@ -77,7 +95,8 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       textOutput("n_ballotage"),
       tags$hr(),
       DT::dataTableOutput("data_ballotage")
-    )
+    ),
+    thinkr_link()
   )
 
 
