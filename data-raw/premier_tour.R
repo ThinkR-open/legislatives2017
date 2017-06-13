@@ -4,6 +4,7 @@ library(purrr)
 library(tibble)
 library(dplyr)
 library(forcats)
+library(tidyr)
 
 get_circonscriptions <- function(dpt, pb){
   setTxtProgressBar( pb, getTxtProgressBar(pb) + 1)
@@ -115,7 +116,8 @@ fix_circ <- function(circ){
 }
 
 premier_tour <- premier_tour %>%
-  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ) )
+  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ), civilite = ifelse(grepl("M\\.", candidat), "M.","Mme")
+ )
 
-use_data( premier_tour, overwrite = TRUE )
+devtools::use_data( premier_tour, overwrite = TRUE )
 
