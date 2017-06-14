@@ -5,6 +5,7 @@ library(dplyr)
 library(stringr)
 library(htmltools)
 library(purrr)
+library(ggplot2)
 
 couleurs <- c(
   REM  = "purple",
@@ -144,7 +145,10 @@ server <- shinyServer(function(input, output, session){
 
   output$carte_abstention <- renderLeaflet({
     abst <- data_abstention$p_abstentions / 100
-    col <- gray( 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) ) )
+    abst[is.na(abst)] <- 0
+
+    val <- 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) )
+    col <- gray(val)
 
     labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
       map(HTML)
