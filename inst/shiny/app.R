@@ -132,8 +132,6 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       DT::dataTableOutput("data_ballotage_details")
     )
   )
-
-
 )
 
 server <- shinyServer(function(input, output, session){
