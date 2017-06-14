@@ -47,6 +47,23 @@ thinkr_link <- function(){
   )
 }
 
+miniplot <- function(Score, Nuances){
+  x <- cumsum(c(0, Score ))
+  left <- head(x,-1)
+  right <- tail(x,-1)
+
+  col <- couleurs[ as.character(Nuances) ]
+  col[ is.na(col) ] <- "gray"
+
+  par( mar = rep(0, 4) )
+  plot( 0, 0, type = "n", xlim = c(0,100), ylim = c(0,1), axes = F )
+  rect(
+    xleft = left, xright = right,
+    ybottom = 0, ytop = 1, lwd = .5,
+    col = col
+  )
+}
+
 
 nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
@@ -88,6 +105,8 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
       textOutput("selected_circonscription"),
       br(),
+      plotOutput("miniplot_details", height = "20", width = "100%"),
+      br(),
       DT::dataTableOutput("data_premier_details")
     )
   ),
@@ -116,7 +135,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
 )
 
-server <- shinyServer(function(input, output){
+server <- shinyServer(function(input, output, session){
 
   data_abstention <- premier_tour %>%
     distinct(dpt, circ, .keep_all = TRUE) %>%
@@ -207,6 +226,10 @@ server <- shinyServer(function(input, output){
 
     data
 
+  })
+
+  output$miniplot_details <- renderPlot({
+    with( data_premier_details(), miniplot( Score, Nuances ) )
   })
 
   output$data_premier_details <- DT::renderDataTable({
