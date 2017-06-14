@@ -6,6 +6,7 @@ library(stringr)
 library(htmltools)
 library(purrr)
 library(ggplot2)
+library(magrittr)
 
 couleurs <- c(
   REM  = "purple",
