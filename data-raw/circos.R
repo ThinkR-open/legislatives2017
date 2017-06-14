@@ -12,6 +12,7 @@ circos@data <- as_tibble(mutate( circos@data,
   ID = as.character(ID),
   nom_reg = as.character(nom_reg),
   code_reg = as.character(code_reg),
-  nom_dpt = str_to_title(nom_dpt)
+  nom_dpt = str_to_title(nom_dpt),
+  nom_reg = str_to_title(nom_reg)
 ))
 use_data( circos, overwrite = TRUE )
