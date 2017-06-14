@@ -128,7 +128,7 @@ server <- shinyServer(function(input, output){
     abst <- data_abstention$p_abstention
     col <- gray( 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) ) )
 
-    labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", str_to_title(nom_dpt), num_circ, Inscrits, Abstentions, round(100*p_abstention, 2 ) )) %>%
+    labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, round(100*p_abstention, 2 ) )) %>%
       map(HTML)
 
     leaflet(circos) %>%
@@ -148,8 +148,7 @@ server <- shinyServer(function(input, output){
     data <- select(data_abstention, nom_dpt, num_circ, p_abstention ) %>%
       arrange( desc(p_abstention) ) %>%
       mutate(
-        p_abstention = round(100*p_abstention,2),
-        nom_dpt = str_to_title(nom_dpt)
+        p_abstention = round(100*p_abstention,2)
       )
     DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "350px"))
   })
@@ -164,7 +163,7 @@ server <- shinyServer(function(input, output){
       Score  =  round(100*max(Voix / Exprimes), 2),
       Nuances = Nuances[ Voix == max(Voix)][1],
       candidat = candidat[Voix == max(Voix)][1],
-      summary = paste( str_to_title(nom_dpt), "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
+      summary = paste( nom_dpt, "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
     ) %>%
     left_join( circos@data, ., by = c("code_dpt", "num_circ"))
 
@@ -212,8 +211,7 @@ server <- shinyServer(function(input, output){
     sel <- selected()
     dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
       head(1) %$%
-      nom_dpt %>%
-      str_to_title()
+      nom_dpt
 
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
@@ -227,7 +225,6 @@ server <- shinyServer(function(input, output){
   output$data_premier <- DT::renderDataTable({
     data <- data_premier %>%
       select(nom_dpt, num_circ,candidat, Nuances, Score) %>%
-      mutate( nom_dpt = str_to_title(nom_dpt) ) %>%
       arrange( desc(Score) )
     DT::datatable( data, filter = "top", options = list(pageLength = 5, scrollY = "200px") )
   })
@@ -301,9 +298,8 @@ server <- shinyServer(function(input, output){
     sel <- selected_ballotage()
     dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
       head(1) %$%
-      nom_dpt %>%
-      str_to_title()
-
+      nom_dpt
+      
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
       head(1)
