@@ -54,7 +54,7 @@ rightPanel <- function(width = 500, ...){
   absolutePanel( class = "panel panel-default panel-side",
     fixed = TRUE, draggable = TRUE,
     top = 60, left = "auto", right = 20, bottom = "auto",
-    width = width, height= "auto",
+    width = 500, height= "auto",
     ...
   )
 }
@@ -111,7 +111,7 @@ server <- shinyServer(function(input, output){
 
   data_abstention <- premier_tour %>%
     distinct(dpt, circ, .keep_all = TRUE) %>%
-    select(dpt, circ, Inscrits:Exprimes) %>%
+    select(dpt, circ, Inscrits:Exprimes, p_abstentions) %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ"))
 
   output$carte_abstention <- renderLeaflet({
