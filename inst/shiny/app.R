@@ -121,14 +121,13 @@ server <- shinyServer(function(input, output){
   data_abstention <- premier_tour %>%
     distinct(dpt, circ, .keep_all = TRUE) %>%
     select(dpt, circ, Inscrits:Exprimes) %>%
-    left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
-    mutate( p_abstention = Abstentions / Inscrits )
+    left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ"))
 
   output$carte_abstention <- renderLeaflet({
-    abst <- data_abstention$p_abstention
+    abst <- data_abstention$p_abstentions / 100
     col <- gray( 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) ) )
 
-    labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, round(100*p_abstention, 2 ) )) %>%
+    labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
       map(HTML)
 
     leaflet(circos) %>%
@@ -145,11 +144,8 @@ server <- shinyServer(function(input, output){
   })
 
   output$data_abstention <- DT::renderDataTable({
-    data <- select(data_abstention, nom_dpt, num_circ, p_abstention ) %>%
-      arrange( desc(p_abstention) ) %>%
-      mutate(
-        p_abstention = round(100*p_abstention,2)
-      )
+    data <- select(data_abstention, nom_dpt, num_circ, p_abstentions ) %>%
+      arrange( desc(p_abstentions) ) %>%
     DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "350px"))
   })
 
@@ -299,7 +295,7 @@ server <- shinyServer(function(input, output){
     dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
       head(1) %$%
       nom_dpt
-      
+
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
       head(1)

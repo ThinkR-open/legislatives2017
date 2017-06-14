@@ -55,8 +55,9 @@ get_resultats <- function(dpt, circ, pb){
     ) %>%
     mutate(
       Voix = as.numeric(str_replace_all(Voix, " ", "")),
-      p_inscrits = as.numeric(str_replace_all(p_inscrits, ",", ".")),
-      p_exprimes = as.numeric(str_replace_all(p_exprimes, ",", ".")),
+      p_inscrits = 100 * as.numeric(str_replace_all(p_inscrits, ",", ".")),
+      p_exprimes = 100 * as.numeric(str_replace_all(p_exprimes, ",", ".")),
+      p_abstentions = 100 * Abstentions / Inscrits,
       resultat   = str_replace(resultat, "[*]", "" )
     )
 }
@@ -116,6 +117,9 @@ fix_circ <- function(circ){
 }
 
 premier_tour <- premier_tour %>%
-  mutate( dpt = fix_dpt(dpt), circ = fix_circ(circ) )
+  mutate(
+    dpt = fix_dpt(dpt),
+    circ = fix_circ(circ)
+  )
 
 devtools::use_data( premier_tour, overwrite = TRUE )
