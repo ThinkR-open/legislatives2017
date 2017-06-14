@@ -156,7 +156,7 @@ server <- shinyServer(function(input, output){
     mutate( summary = sprintf( "%s (%s) :: %4.2f %%", candidat, Nuances, round(100 * Voix / Exprimes, 2 ) )  ) %>%
     group_by(code_dpt,num_circ) %>%
     summarise(
-      Score  =  round(100*max(Voix / Exprimes), 2),
+      Score  =  max(Score),
       Nuances = Nuances[ Voix == max(Voix)][1],
       candidat = candidat[Voix == max(Voix)][1],
       summary = paste( nom_dpt, "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
@@ -193,7 +193,6 @@ server <- shinyServer(function(input, output){
 
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
-      mutate( Score=round(100*Voix/Exprimes, 2)) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       arrange( desc(Voix) )
 
@@ -230,7 +229,6 @@ server <- shinyServer(function(input, output){
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
       left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
-      mutate( Score = round( 100* Voix / Exprimes, 2) ) %>%
       arrange( desc(Score) )
 
   })
@@ -280,7 +278,6 @@ server <- shinyServer(function(input, output){
     sel <- selected_ballotage()
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
-      mutate( Score=round(100*Voix/Exprimes, 2)) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       arrange( desc(Voix) )
 

@@ -119,7 +119,8 @@ fix_circ <- function(circ){
 premier_tour <- premier_tour %>%
   mutate(
     dpt = fix_dpt(dpt),
-    circ = fix_circ(circ)
+    circ = fix_circ(circ),
+    Score = 100 * Voix / Exprimes
   )
 
 devtools::use_data( premier_tour, overwrite = TRUE )
