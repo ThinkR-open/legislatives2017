@@ -50,7 +50,7 @@ thinkr_link <- function(){
 
 nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
-rightPanel <- function(width = 500, ...){
+rightPanel <- function(...){
   absolutePanel( class = "panel panel-default panel-side",
     fixed = TRUE, draggable = TRUE,
     top = 60, left = "auto", right = 20, bottom = "auto",
@@ -137,7 +137,8 @@ server <- shinyServer(function(input, output){
   output$data_abstention <- DT::renderDataTable({
     data <- select(data_abstention, nom_dpt, num_circ, p_abstentions ) %>%
       arrange( desc(p_abstentions) ) %>%
-    DT::datatable( data, filter = "top", options = list(pageLength = 20, scrollY = "350px"))
+      mutate( p_abstentions = round(p_abstentions, 2)) %>%
+      DT::datatable( filter = "top", options = list(pageLength = 20, scrollY = "350px"))
   })
 
 
@@ -185,7 +186,10 @@ server <- shinyServer(function(input, output){
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
+      mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
+
+    data
 
   })
 
@@ -211,15 +215,18 @@ server <- shinyServer(function(input, output){
   output$data_premier <- DT::renderDataTable({
     data <- data_premier %>%
       select(nom_dpt, num_circ,candidat, Nuances, Score) %>%
-      arrange( desc(Score) )
-    DT::datatable( data, filter = "top", options = list(pageLength = 5, scrollY = "200px") )
+      mutate( Score = round(Score, 2)) %>%
+      arrange( desc(Score) ) %>%
+      DT::datatable( filter = "top", options = list(pageLength = 5, scrollY = "200px") )
   })
 
   data_ballotage <- reactive({
     nuance <- input$sel_ballotage
+    if( is.null(nuance) ) nuance <- "FI"
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
       left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
+      mutate( Score = round(Score, 2)) %>%
       arrange( desc(Score) )
 
   })
@@ -270,8 +277,8 @@ server <- shinyServer(function(input, output){
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
+      mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
-
   })
 
   output$data_ballotage_details <- DT::renderDataTable({
