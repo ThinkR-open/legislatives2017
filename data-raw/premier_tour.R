@@ -126,6 +126,4 @@ premier_tour <- premier_tour %>%
   ) %>%
   select( dpt:Exprimes, civilite, Voix:Score )
 
-# premier_tour <- premier_tour[,c(1:8,15,9:14)]
-
 devtools::use_data( premier_tour, overwrite = TRUE )
