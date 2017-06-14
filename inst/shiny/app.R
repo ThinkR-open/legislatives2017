@@ -50,17 +50,23 @@ thinkr_link <- function(){
 
 nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
+rightPanel <- function(width = 500, ...){
+  absolutePanel( class = "panel panel-default panel-side",
+    fixed = TRUE, draggable = TRUE,
+    top = 60, left = "auto", right = 20, bottom = "auto",
+    width = width, height= "auto",
+    ...
+  )
+}
+
+
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel("Abstention",
     div( class = "fullpage",
       leafletOutput( "carte_abstention", width="100%", height="100%" )
     ),
-    absolutePanel( class = "panel panel-default panel-side",
-      fixed = TRUE, draggable = TRUE,
-      top = 60, left = "auto", right = 20, bottom = "auto",
-      width = 400, height= "auto",
-
+    rightPanel(
       DT::dataTableOutput("data_abstention")
     ),
     thinkr_link()
@@ -72,11 +78,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       leafletOutput( "carte_premier", width="100%", height="100%" )
     ),
 
-    absolutePanel( class = "panel panel-default panel-side",
-      fixed = TRUE, draggable = TRUE,
-      top = 60, left = "auto", right = 20, bottom = "auto",
-      width = 500, height= "auto",
-
+    rightPanel(
       DT::dataTableOutput("data_premier"),
 
       hr(),
@@ -85,6 +87,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       br(),
       DT::dataTableOutput("data_premier_details")
     ),
+
     thinkr_link()
   ),
 
@@ -94,11 +97,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       leafletOutput( "carte_ballotage", width="100%", height="100%" )
     ),
 
-    absolutePanel( class = "panel panel-default panel-side",
-      fixed = TRUE, draggable = TRUE,
-      top = 60, left = "auto", right = 20, bottom = "auto",
-      width = 500, height= "auto",
-
+    rightPanel(
       selectInput("sel_ballotage", label = "Nuance", choices = nuances_ballotage, selected = "FI"),
       textOutput("n_ballotage"),
       tags$hr(),
