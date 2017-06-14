@@ -166,10 +166,11 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$data_abstention <- DT::renderDataTable({
-    data <- select(data_abstention, nom_dpt, num_circ, p_abstentions ) %>%
+    data <- select(data_abstention, nom_reg, nom_dpt, num_circ, p_abstentions ) %>%
       arrange( desc(p_abstentions) ) %>%
       mutate( p_abstentions = round(p_abstentions, 2)) %>%
-      DT::datatable( filter = "top", options = list(pageLength = 20, scrollY = "350px"))
+      rename( region = nom_reg, departement = nom_dpt, circ = num_circ ) %>%
+      DT::datatable( options = list(pageLength = 20, scrollY = "350px"))
   })
 
   output$hist_abstention <- renderPlot({
@@ -193,10 +194,17 @@ server <- shinyServer(function(input, output, session){
     ) %>%
     left_join( circos@data, ., by = c("code_dpt", "num_circ"))
 
+  output$data_premier <- DT::renderDataTable({
+    data <- data_premier %>%
+      select(nom_reg, nom_dpt, num_circ,candidat, Nuances, Score) %>%
+      mutate( Score = round(Score, 2)) %>%
+      arrange( desc(Score) ) %>%
+      rename( region = nom_reg, departement = nom_dpt, circ = num_circ ) %>%
+      DT::datatable( options = list(pageLength = 5, scrollY = "200px") )
+  })
+
   output$carte_premier <- renderLeaflet({
     col  <- unname(couleurs[ as.character(data_premier$Nuances) ])
-    col[is.na(col)] <- "white"
-
     labels <- data_premier$summary %>% map(HTML)
 
     leaflet(circos) %>%
@@ -253,15 +261,6 @@ server <- shinyServer(function(input, output, session){
       dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
   })
 
-
-  output$data_premier <- DT::renderDataTable({
-    data <- data_premier %>%
-      select(nom_dpt, num_circ,candidat, Nuances, Score) %>%
-      mutate( Score = round(Score, 2)) %>%
-      arrange( desc(Score) ) %>%
-      DT::datatable( filter = "top", options = list(pageLength = 5, scrollY = "200px") )
-  })
-
   data_ballotage <- reactive({
     nuance <- input$sel_ballotage
 
@@ -299,8 +298,9 @@ server <- shinyServer(function(input, output, session){
 
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
-      select( candidat, nom_dpt, circ, Score ) %>%
-      DT::datatable( filter = "top", options = list(pageLength = 5, scrollY = "200px") )
+      select( candidat, nom_reg, nom_dpt, circ, Score ) %>%
+      rename( region = nom_reg, departement = nom_dpt ) %>%
+      DT::datatable( options = list(pageLength = 5, scrollY = "200px") )
   })
 
   output$hist_ballotage <- renderPlot({
