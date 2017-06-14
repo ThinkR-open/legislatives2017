@@ -59,25 +59,25 @@ rightPanel <- function(width = 500, ...){
   )
 }
 
+tabPanel_elections <- function( title, carte, ... ){
+  tabPanel(title,
+    div( class = "fullpage",
+      leafletOutput( carte, width="100%", height="100%" )
+    ),
+    ...,
+    thinkr_link()
+  )
+}
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
-  tabPanel("Abstention",
-    div( class = "fullpage",
-      leafletOutput( "carte_abstention", width="100%", height="100%" )
-    ),
+  tabPanel_elections("Abstention", "carte_abstention",
     rightPanel(
       DT::dataTableOutput("data_abstention")
-    ),
-    thinkr_link()
+    )
   ),
 
-  tabPanel("Premier",
-
-    div( class = "fullpage",
-      leafletOutput( "carte_premier", width="100%", height="100%" )
-    ),
-
+  tabPanel_elections("Premier", "carte_premier",
     rightPanel(
       DT::dataTableOutput("data_premier"),
 
@@ -86,17 +86,10 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       textOutput("selected_circonscription"),
       br(),
       DT::dataTableOutput("data_premier_details")
-    ),
-
-    thinkr_link()
+    )
   ),
 
-  tabPanel("Ballotages par parti",
-
-    div( class = "fullpage",
-      leafletOutput( "carte_ballotage", width="100%", height="100%" )
-    ),
-
+  tabPanel_elections("Ballotages", "carte_ballotage",
     rightPanel(
       selectInput("sel_ballotage", label = "Nuance", choices = nuances_ballotage, selected = "FI"),
       textOutput("n_ballotage"),
@@ -108,8 +101,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       textOutput("selected_ballotage_circonscription"),
       br(),
       DT::dataTableOutput("data_ballotage_details")
-    ),
-    thinkr_link()
+    )
   )
 
 
