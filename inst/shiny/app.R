@@ -73,6 +73,9 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel_elections("Abstention", "carte_abstention",
     rightPanel(
+      h4("Distribution de l'abstention"),
+      plotOutput("hist_abstention", height = 200 ),
+      h4("Détail"),
       DT::dataTableOutput("data_abstention")
     )
   ),
@@ -91,14 +94,20 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel_elections("Ballotages", "carte_ballotage",
     rightPanel(
-      selectInput("sel_ballotage", label = "Nuance", choices = nuances_ballotage, selected = "FI"),
+      selectInput("sel_ballotage",
+        label = "Nuance",
+        choices = nuances_ballotage,
+        selected = "FI"
+      ),
       textOutput("n_ballotage"),
       tags$hr(),
-      DT::dataTableOutput("data_ballotage"),
-
+      tabsetPanel(
+        tabPanel("Distribution", plotOutput("hist_ballotage", height = "300px")),
+        tabPanel("Detail", DT::dataTableOutput("data_ballotage") )
+      ),
       hr(),
 
-      textOutput("selected_ballotage_circonscription"),
+      h4(textOutput("selected_ballotage_circonscription")),
       br(),
       DT::dataTableOutput("data_ballotage_details")
     )
@@ -141,6 +150,13 @@ server <- shinyServer(function(input, output){
       DT::datatable( filter = "top", options = list(pageLength = 20, scrollY = "350px"))
   })
 
+  output$hist_abstention <- renderPlot({
+    ggplot( data_abstention ) +
+      aes( x = p_abstentions ) +
+      geom_histogram(binwidth = 1) +
+      xlab( "% Abstention" ) +
+      ylab("# circonscriptions")
+  })
 
   data_premier <- premier_tour %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
@@ -222,7 +238,6 @@ server <- shinyServer(function(input, output){
 
   data_ballotage <- reactive({
     nuance <- input$sel_ballotage
-    if( is.null(nuance) ) nuance <- "FI"
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
       left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
@@ -258,13 +273,21 @@ server <- shinyServer(function(input, output){
 
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
-      select( candidat, nom_dpt, circ, Score )
-    DT::datatable( data , filter = "top", options = list(pageLength = 5, scrollY = "200px") )
+      select( candidat, nom_dpt, circ, Score ) %>%
+      DT::datatable( filter = "top", options = list(pageLength = 5, scrollY = "200px") )
+  })
+
+  output$hist_ballotage <- renderPlot({
+    col <- couleurs[input$sel_ballotage]
+    ggplot( data_ballotage() ) +
+      aes( x = Score ) +
+      geom_histogram(binwidth = 1, fill = col ) +
+      xlab( "Score au premier tour" ) +
+      ylab( "# circonscriptions")
   })
 
   output$n_ballotage <- renderText({
-    nuance <- input$sel_ballotage
-    sprintf( "%s. %d candidat(e)s en ballotage", nuance, nrow(data_ballotage())  )
+    sprintf( "%d candidat(e)s", nrow(data_ballotage())  )
   })
 
   selected_ballotage <- eventReactive(input$carte_ballotage_shape_click, {
