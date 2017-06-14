@@ -48,7 +48,7 @@ thinkr_link <- function(){
 }
 
 
-nuances <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
+nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
@@ -99,7 +99,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
       top = 60, left = "auto", right = 20, bottom = "auto",
       width = 500, height= "auto",
 
-      selectInput("sel_ballotage", label = "Nuance", choices = nuances, selected = "FI"),
+      selectInput("sel_ballotage", label = "Nuance", choices = nuances_ballotage, selected = "FI"),
       textOutput("n_ballotage"),
       tags$hr(),
       DT::dataTableOutput("data_ballotage"),
