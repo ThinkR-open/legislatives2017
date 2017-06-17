@@ -101,6 +101,9 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel_elections("Premier", "carte_premier",
     rightPanel(
+
+
+
       DT::dataTableOutput("data_premier"),
 
       hr(),
@@ -181,7 +184,8 @@ server <- shinyServer(function(input, output, session){
       ylab("# circonscriptions")
   })
 
-  data_premier <- premier_tour %>%
+  data_premier <- reactive({
+    premier_tour %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
     filter( resultat %in% c("ballotage", "elu") ) %>%
     mutate( summary = sprintf( "%s (%s) :: %4.2f %%", candidat, Nuances, round(100 * Voix / Exprimes, 2 ) )  ) %>%
@@ -193,19 +197,21 @@ server <- shinyServer(function(input, output, session){
       summary = paste( nom_dpt, "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
     ) %>%
     left_join( circos@data, ., by = c("code_dpt", "num_circ"))
+  })
 
   output$data_premier <- DT::renderDataTable({
-    data <- data_premier %>%
+    data <- data_premier() %>%
       select(nom_reg, nom_dpt, num_circ,candidat, Nuances, Score) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Score) ) %>%
       rename( region = nom_reg, departement = nom_dpt, circ = num_circ ) %>%
-      DT::datatable( options = list(pageLength = 5, scrollY = "200px") )
+      DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
   output$carte_premier <- renderLeaflet({
-    col  <- unname(couleurs[ as.character(data_premier$Nuances) ])
-    labels <- data_premier$summary %>% map(HTML)
+    data <- data_premier()
+    col  <- unname(couleurs[ as.character(data$Nuances) ])
+    labels <- data$summary %>% map(HTML)
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -221,13 +227,23 @@ server <- shinyServer(function(input, output, session){
       )
   })
 
-  selected <- eventReactive(input$carte_premier_shape_click, {
+
+  premier_selected <- reactiveValues( data = list( dpt_ = "34", circ_ = 2 ) )
+  selected <- reactive(premier_selected$data)
+
+  observeEvent( input$carte_premier_shape_click, {
     click <- strsplit(input$carte_premier_shape_click$id, "-")[[1]]
-    list( dpt_ = click[1], circ_ = click[2])
+    premier_selected$data <- list( click[1], click[2] )
+  })
+
+  observeEvent( input$data_premier_rows_selected, {
+      data <- slice( data_premier(), input$data_premier_rows_selected )
+      premier_selected$data <- list( dpt_ = data$code_dpt, circ_ = data$num_circ )
   })
 
   data_premier_details <- reactive({
     sel <- selected()
+    req(sel$dpt_)
 
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
