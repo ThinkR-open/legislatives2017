@@ -7,6 +7,7 @@ library(htmltools)
 library(purrr)
 library(ggplot2)
 library(magrittr)
+library(sp)
 
 couleurs <- c(
   REM  = "purple",
@@ -332,7 +333,7 @@ server <- shinyServer(function(input, output, session){
           textsize = "15px",
           direction = "auto"
         ),
-        layerId = paste(circos@data$code_dpt, "-", circos@data$num_circ, sep = "")
+        layerId = paste(data$code_dpt, "-", data$num_circ, sep = "")
       )
   })
 
