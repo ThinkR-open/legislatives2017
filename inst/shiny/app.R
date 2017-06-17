@@ -320,7 +320,7 @@ server <- shinyServer(function(input, output, session){
     col  <- unname(couleurs[ as.character(data$Nuances) ])
     labels <- data$summary %>% map(HTML)
 
-    circos <- circos[ circos@data$ID %in% data$ID , ]
+    circos <- circos[ circos@data$ID %in% data$ID , , drop = FALSE]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -403,7 +403,7 @@ server <- shinyServer(function(input, output, session){
 
     labels <- with(data, sprintf("%s (%4.2f)", candidat, Score )) %>% map(HTML)
 
-    circos <- circos[ na.omit(match( data$ID, circos@data$ID)),  ]
+    circos <- circos[ na.omit(match( data$ID, circos@data$ID)), , drop = FALSE ]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
