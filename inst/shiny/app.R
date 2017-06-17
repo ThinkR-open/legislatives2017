@@ -68,6 +68,8 @@ miniplot <- function(Score, Nuances){
 
 
 nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
+regions <- unique( circos@data$nom_reg )
+departements <- unique( circos@data$nom_dpt )
 
 rightPanel <- function(...){
   absolutePanel( class = "panel panel-default panel-side",
@@ -100,10 +102,27 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
   ),
 
   tabPanel_elections("Premier", "carte_premier",
+
+    absolutePanel(  class = "panel panel-default panel-side",
+      fixed = TRUE, draggable = TRUE,
+      top = 100, right = "auto", left = 20, bottom = "auto",
+      width = 300, height= "auto",
+
+      sliderInput( "premier_pourcentage_inscrits", label = "Score du candidat en tête", value = c(14, 61), min = 14, max = 61, step = 1, width = "100%" ),
+
+      selectizeInput( "premier_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
+        options = list( plugins = list( "remove_button" ), create = FALSE )
+       ),
+
+      selectizeInput( "premier_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
+         options = list( plugins = list( "remove_button" ), create = FALSE )
+      ),
+
+      selectizeInput( "premier_nuance", label = "Nuances (du candidat en tête)", multiple=TRUE, choices = nuances_ballotage, selected=NULL, width = "100%",
+         options = list( plugins = list( "remove_button" ), create = FALSE )
+      )
+    ),
     rightPanel(
-
-
-
       DT::dataTableOutput("data_premier"),
 
       hr(),
@@ -184,8 +203,7 @@ server <- shinyServer(function(input, output, session){
       ylab("# circonscriptions")
   })
 
-  data_premier <- reactive({
-    premier_tour %>%
+  data_premier_all <- premier_tour %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
     filter( resultat %in% c("ballotage", "elu") ) %>%
     mutate( summary = sprintf( "%s (%s) :: %4.2f %%", candidat, Nuances, round(100 * Voix / Exprimes, 2 ) )  ) %>%
@@ -197,13 +215,50 @@ server <- shinyServer(function(input, output, session){
       summary = paste( nom_dpt, "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
     ) %>%
     left_join( circos@data, ., by = c("code_dpt", "num_circ"))
+
+  selected_region <- reactive({
+    region_ <- input$premier_region
+    if(is.null(region_)) region_ <- regions
+    region_
+  })
+
+  selected_departement <- reactive({
+    dpt_ <- input$premier_dpt
+    if( is.null(dpt_)) dpt_ <- departements
+    dpt_
+  })
+
+  selected_nuance <- reactive({
+    nuance_ <- input$premier_nuance
+    if(is.null(nuance_)) nuance_ <- nuances_ballotage
+    nuance_
+  })
+
+  observeEvent( input$premier_region, {
+
+      all_dpt <- filter(data_premier_all, nom_reg %in% selected_region() ) %>% distinct(nom_dpt) %$% nom_dpt
+      sel_dpt <- intersect(all_dpt, input$premier_dpt )
+
+      updateSelectizeInput( "premier_dpt", session = session,
+        choices = all_dpt, selected = sel_dpt
+      )
+  })
+
+  data_premier <- reactive({
+      data <- data_premier_all %>%
+        filter(
+          Score >= input$premier_pourcentage_inscrits[1],
+          Score <= input$premier_pourcentage_inscrits[2],
+          nom_dpt %in% selected_departement() ,
+          nom_reg %in% selected_region() ,
+          Nuances %in% selected_nuance()
+         )
   })
 
   output$data_premier <- DT::renderDataTable({
     data <- data_premier() %>%
-      select(nom_reg, nom_dpt, num_circ,candidat, Nuances, Score) %>%
+      select( nom_reg, nom_dpt, num_circ,candidat, Nuances, Score) %>%
       mutate( Score = round(Score, 2)) %>%
-      arrange( desc(Score) ) %>%
       rename( region = nom_reg, departement = nom_dpt, circ = num_circ ) %>%
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
@@ -212,6 +267,8 @@ server <- shinyServer(function(input, output, session){
     data <- data_premier()
     col  <- unname(couleurs[ as.character(data$Nuances) ])
     labels <- data$summary %>% map(HTML)
+
+    circos <- circos[ circos@data$ID %in% data$ID , ]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -233,7 +290,7 @@ server <- shinyServer(function(input, output, session){
 
   observeEvent( input$carte_premier_shape_click, {
     click <- strsplit(input$carte_premier_shape_click$id, "-")[[1]]
-    premier_selected$data <- list( click[1], click[2] )
+    premier_selected$data <- list( dpt_ = click[1], circ_ = click[2] )
   })
 
   observeEvent( input$data_premier_rows_selected, {
@@ -243,8 +300,6 @@ server <- shinyServer(function(input, output, session){
 
   data_premier_details <- reactive({
     sel <- selected()
-    req(sel$dpt_)
-
     data <- premier_tour %>%
       filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
