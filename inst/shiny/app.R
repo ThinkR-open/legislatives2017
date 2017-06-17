@@ -80,6 +80,16 @@ rightPanel <- function(...){
   )
 }
 
+leftPanel <- function(...){
+  absolutePanel(  class = "panel panel-default panel-side",
+    fixed = TRUE, draggable = TRUE,
+    top = 100, right = "auto", left = 20, bottom = "auto",
+    width = 300, height= "auto",
+    ...
+  )
+}
+
+
 tabPanel_elections <- function( title, carte, ... ){
   tabPanel(title,
     div( class = "fullpage",
@@ -93,6 +103,19 @@ tabPanel_elections <- function( title, carte, ... ){
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel_elections("Abstention", "carte_abstention",
+
+    leftPanel(
+      sliderInput( "abstention_pourcentage", label = "Pourcentage d'abstention", value = c(0,100), min = 0, max = 100, step = 1, width = "100%" ),
+
+      selectizeInput( "abstention_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
+        options = list( plugins = list( "remove_button" ), create = FALSE )
+       ),
+
+      selectizeInput( "abstention_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
+         options = list( plugins = list( "remove_button" ), create = FALSE )
+      )
+    ),
+
     rightPanel(
       h4("Distribution de l'abstention"),
       plotOutput("hist_abstention", height = 200 ),
@@ -103,11 +126,7 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   tabPanel_elections("Premier", "carte_premier",
 
-    absolutePanel(  class = "panel panel-default panel-side",
-      fixed = TRUE, draggable = TRUE,
-      top = 100, right = "auto", left = 20, bottom = "auto",
-      width = 300, height= "auto",
-
+    leftPanel(
       sliderInput( "premier_pourcentage_inscrits", label = "Score du candidat en tête", value = c(14, 61), min = 14, max = 61, step = 1, width = "100%" ),
 
       selectizeInput( "premier_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
@@ -159,20 +178,49 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
 server <- shinyServer(function(input, output, session){
 
-  data_abstention <- premier_tour %>%
+  data_abstention_all <- premier_tour %>%
     distinct(dpt, circ, .keep_all = TRUE) %>%
     select(dpt, circ, Inscrits:Exprimes, p_abstentions) %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ"))
 
+
+    abst_selected_region <- reactive({
+      region_ <- input$abstention_region
+      if(is.null(region_)) region_ <- regions
+      region_
+    })
+
+    abst_selected_departement <- reactive({
+      dpt_ <- input$abstention_dpt
+      if( is.null(dpt_)) dpt_ <- departements
+      dpt_
+    })
+
+    abst_pourcentage <- reactive(input$abstention_pourcentage)
+
+
+  data_abstention <- reactive({
+      data_abstention_all %>%
+        filter(
+          nom_reg %in% abst_selected_region(),
+          nom_dpt %in% abst_selected_departement(),
+          p_abstentions >= abst_pourcentage()[1],
+          p_abstentions <= abst_pourcentage()[2]
+        )
+  })
+
   output$carte_abstention <- renderLeaflet({
-    abst <- data_abstention$p_abstentions / 100
+    data <- data_abstention()
+    abst <- data$p_abstentions / 100
     abst[is.na(abst)] <- 0
 
-    val <- 1 - ( abst - min(abst) ) / ( max(abst) - min(abst) )
-    col <- gray(val)
+    val <- 1 - ( abst - .18 ) / ( .77 - .18 )
+    col <- gray(1-val)
 
-    labels <- with( data_abstention, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
+    labels <- with( data, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
       map(HTML)
+
+    circos <- circos[ circos@data$ID %in% data$ID, ]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -188,7 +236,7 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$data_abstention <- DT::renderDataTable({
-    data <- select(data_abstention, nom_reg, nom_dpt, num_circ, p_abstentions ) %>%
+    data <- select(data_abstention(), nom_reg, nom_dpt, num_circ, p_abstentions ) %>%
       arrange( desc(p_abstentions) ) %>%
       mutate( p_abstentions = round(p_abstentions, 2)) %>%
       rename( region = nom_reg, departement = nom_dpt, circ = num_circ ) %>%
@@ -196,12 +244,16 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$hist_abstention <- renderPlot({
-    ggplot( data_abstention ) +
+    ggplot( data_abstention() ) +
       aes( x = p_abstentions ) +
       geom_histogram(binwidth = 1) +
       xlab( "% Abstention" ) +
       ylab("# circonscriptions")
   })
+
+
+
+  ### tab premier
 
   data_premier_all <- premier_tour %>%
     left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
