@@ -197,7 +197,6 @@ server <- shinyServer(function(input, output, session){
 
   abst_pourcentage <- reactive(input$abstention_pourcentage)
 
-
   data_abstention <- reactive({
       data_abstention_all %>%
         filter(
