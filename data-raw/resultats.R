@@ -135,7 +135,9 @@ get_resultats_tour <- function( departements, circonscriptions, resultats_fun, m
     unnest() %>%
     mutate(
       civilite = ifelse(grepl("^M[.]", candidat), "M.","Mme"),
-      candidat = str_replace_all(candidat, "^Mm?e?[.]? ", "")
+      candidat = str_replace_all(candidat, "^Mm?e?[.]? ", ""),
+      Score = 100 * Voix /  Exprimes,
+      p_abstentions = 100 * Abstentions / Inscrits
     )
 }
 

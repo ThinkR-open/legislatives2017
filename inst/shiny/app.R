@@ -69,8 +69,8 @@ miniplot <- function(Score, Nuances){
 
 
 nuances_ballotage <- premier_tour %>% filter( resultat == "ballotage" ) %$% Nuances %>% as.character %>% unique
-regions <- unique( circos@data$nom_reg )
-departements <- unique( circos@data$nom_dpt )
+regions <- unique( premier_tour$nom_reg )
+departements <- unique( premier_tour$nom_dpt )
 
 rightPanel <- function(...){
   absolutePanel( class = "panel panel-default panel-side",
@@ -180,24 +180,22 @@ ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 server <- shinyServer(function(input, output, session){
 
   data_abstention_all <- premier_tour %>%
-    distinct(dpt, circ, .keep_all = TRUE) %>%
-    select(dpt, circ, Inscrits:Exprimes, p_abstentions) %>%
-    left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ"))
+    distinct(code_dpt, num_circ, .keep_all = TRUE) %>%
+    select(code_dpt, num_circ, nom_dpt, nom_reg, Inscrits:Exprimes, p_abstentions)
 
+  abst_selected_region <- reactive({
+    region_ <- input$abstention_region
+    if(is.null(region_)) region_ <- regions
+    region_
+  })
 
-    abst_selected_region <- reactive({
-      region_ <- input$abstention_region
-      if(is.null(region_)) region_ <- regions
-      region_
-    })
+  abst_selected_departement <- reactive({
+    dpt_ <- input$abstention_dpt
+    if( is.null(dpt_)) dpt_ <- departements
+    dpt_
+  })
 
-    abst_selected_departement <- reactive({
-      dpt_ <- input$abstention_dpt
-      if( is.null(dpt_)) dpt_ <- departements
-      dpt_
-    })
-
-    abst_pourcentage <- reactive(input$abstention_pourcentage)
+  abst_pourcentage <- reactive(input$abstention_pourcentage)
 
 
   data_abstention <- reactive({
