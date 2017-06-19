@@ -68,29 +68,6 @@ get_resultats <- function(dpt, circ, pb){
   res
 }
 
-fix_dpt <- function(dpt){
-  dpt[ dpt == "971" ] <- "ZA"
-  dpt[ dpt == "972" ] <- "ZB"
-  dpt[ dpt == "973" ] <- "ZC"
-  dpt[ dpt == "974" ] <- "ZD"
-  dpt[ dpt == "976" ] <- "ZM"
-  dpt[ dpt == "988" ] <- "ZN"
-  dpt[ dpt == "987" ] <- "ZP"
-  dpt[ dpt == "975" ] <- "ZS"
-  dpt[ dpt == "986" ] <- "ZW"
-  dpt[ dpt == "977" ] <- "ZX"
-
-  dpt[ grepl("^\\d$", dpt) ] <- sprintf("%02d", as.numeric(dpt[ grepl("^\\d$", dpt ) ]))
-
-  dpt
-}
-
-fix_circ <- function(circ){
-  circ %>%
-    str_replace( "^.*[AB]", "" ) %>%
-    as.numeric()
-}
-
 departements <- read_html("http://elections.interieur.gouv.fr/legislatives-2017/") %>%
   html_nodes( "option" ) %>%
   html_attr("value") %>%
