@@ -103,85 +103,89 @@ tabPanel_elections <- function( title, carte, ... ){
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
-  tabPanel_elections("Abstention", "carte_abstention",
+  navbarMenu("Premier tour",
 
-    leftPanel(
-      sliderInput( "abstention_pourcentage", label = "Pourcentage d'abstention", value = c(0,100), min = 0, max = 100, step = 1, width = "100%" ),
+    tabPanel_elections("Abstention", "carte_abstention",
 
-      selectizeInput( "abstention_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
-        options = list( plugins = list( "remove_button" ), create = FALSE )
-       ),
+      leftPanel(
+        sliderInput( "abstention_pourcentage", label = "Pourcentage d'abstention", value = c(0,100), min = 0, max = 100, step = 1, width = "100%" ),
 
-      selectizeInput( "abstention_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
-         options = list( plugins = list( "remove_button" ), create = FALSE )
+        selectizeInput( "abstention_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
+          options = list( plugins = list( "remove_button" ), create = FALSE )
+        ),
+
+        selectizeInput( "abstention_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
+          options = list( plugins = list( "remove_button" ), create = FALSE )
+        )
+      ),
+
+      rightPanel(
+        h4("Distribution de l'abstention"),
+        plotOutput("hist_abstention", height = 200 ),
+        h4("Détail"),
+        DT::dataTableOutput("data_abstention")
       )
     ),
 
-    rightPanel(
-      h4("Distribution de l'abstention"),
-      plotOutput("hist_abstention", height = 200 ),
-      h4("Détail"),
-      DT::dataTableOutput("data_abstention")
-    )
-  ),
+    tabPanel_elections("Premier", "carte_premier",
 
-  tabPanel_elections("Premier", "carte_premier",
+      leftPanel(
+        sliderInput( "premier_pourcentage_inscrits", label = "Score du candidat en tête", value = c(9, 64), min = 9, max = 64, step = 1, width = "100%" ),
 
-    leftPanel(
-      sliderInput( "premier_pourcentage_inscrits", label = "Score du candidat en tête", value = c(14, 61), min = 14, max = 61, step = 1, width = "100%" ),
+        selectizeInput( "premier_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
+          options = list( plugins = list( "remove_button" ), create = FALSE )
+        ),
 
-      selectizeInput( "premier_region", label = "regions", multiple=TRUE, choices = regions, selected=NULL, width = "100%",
-        options = list( plugins = list( "remove_button" ), create = FALSE )
-       ),
+        selectizeInput( "premier_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
+          options = list( plugins = list( "remove_button" ), create = FALSE )
+        ),
 
-      selectizeInput( "premier_dpt", label = "departements", multiple=TRUE, choices = departements, selected=NULL, width = "100%",
-         options = list( plugins = list( "remove_button" ), create = FALSE )
+        selectizeInput( "premier_nuance", label = "Nuances (du candidat en tête)", multiple=TRUE, choices = nuances_ballotage, selected=NULL, width = "100%",
+          options = list( plugins = list( "remove_button" ), create = FALSE )
+        )
       ),
+      rightPanel(
+        DT::dataTableOutput("data_premier"),
 
-      selectizeInput( "premier_nuance", label = "Nuances (du candidat en tête)", multiple=TRUE, choices = nuances_ballotage, selected=NULL, width = "100%",
-         options = list( plugins = list( "remove_button" ), create = FALSE )
+        hr(),
+
+        textOutput("selected_circonscription"),
+        br(),
+        plotOutput("miniplot_details", height = "20", width = "100%"),
+        br(),
+        DT::dataTableOutput("data_premier_details")
       )
     ),
-    rightPanel(
-      DT::dataTableOutput("data_premier"),
 
-      hr(),
+    tabPanel_elections("Ballotages", "carte_ballotage",
+      rightPanel(
+        selectInput("sel_ballotage",
+          label = "Nuance",
+          choices = nuances_ballotage,
+          selected = "FI"
+        ),
+        textOutput("n_ballotage"),
+        tags$hr(),
+        tabsetPanel(
+          tabPanel("Distribution", plotOutput("hist_ballotage", height = "300px")),
+          tabPanel("Detail", DT::dataTableOutput("data_ballotage") )
+        ),
+        hr(),
 
-      textOutput("selected_circonscription"),
-      br(),
-      plotOutput("miniplot_details", height = "20", width = "100%"),
-      br(),
-      DT::dataTableOutput("data_premier_details")
+        h4(textOutput("selected_ballotage_circonscription")),
+        br(),
+        DT::dataTableOutput("data_ballotage_details")
+      )
     )
-  ),
-
-  tabPanel_elections("Ballotages", "carte_ballotage",
-    rightPanel(
-      selectInput("sel_ballotage",
-        label = "Nuance",
-        choices = nuances_ballotage,
-        selected = "FI"
-      ),
-      textOutput("n_ballotage"),
-      tags$hr(),
-      tabsetPanel(
-        tabPanel("Distribution", plotOutput("hist_ballotage", height = "300px")),
-        tabPanel("Detail", DT::dataTableOutput("data_ballotage") )
-      ),
-      hr(),
-
-      h4(textOutput("selected_ballotage_circonscription")),
-      br(),
-      DT::dataTableOutput("data_ballotage_details")
     )
-  )
+
 )
 
 server <- shinyServer(function(input, output, session){
 
   data_abstention_all <- premier_tour %>%
     distinct(code_dpt, num_circ, .keep_all = TRUE) %>%
-    select(code_dpt, num_circ, nom_dpt, nom_reg, Inscrits:Exprimes, p_abstentions)
+    select(ID, code_dpt, num_circ, nom_dpt, nom_reg, Inscrits:Exprimes, p_abstentions)
 
   abst_selected_region <- reactive({
     region_ <- input$abstention_region
@@ -208,17 +212,17 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$carte_abstention <- renderLeaflet({
-    data <- data_abstention()
+    data <- filter( data_abstention(), ID %in% circos@data$ID )
+
     abst <- data$p_abstentions / 100
     abst[is.na(abst)] <- 0
-
-    val <- 1 - ( abst - .18 ) / ( .77 - .18 )
+    val <- 1 - ( abst - .18 ) / ( .91 - .18 )
     col <- gray(1-val)
 
     labels <- with( data, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
       map(HTML)
 
-    circos <- circos[ circos@data$ID %in% data$ID, ]
+    circos <- circos[ match( data$ID, circos@data$ID ), ]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -254,17 +258,18 @@ server <- shinyServer(function(input, output, session){
   ### tab premier
 
   data_premier_all <- premier_tour %>%
-    left_join( circos@data, ., by = c( code_dpt = "dpt", num_circ = "circ")) %>%
     filter( resultat %in% c("ballotage", "elu") ) %>%
     mutate( summary = sprintf( "%s (%s) :: %4.2f %%", candidat, Nuances, round(100 * Voix / Exprimes, 2 ) )  ) %>%
     group_by(code_dpt,num_circ) %>%
     summarise(
+      ID   = first(ID),
+      nom_dpt = first(nom_dpt),
+      nom_reg = first(nom_reg),
       Score  =  max(Score),
       Nuances = Nuances[ Voix == max(Voix)][1],
       candidat = candidat[Voix == max(Voix)][1],
       summary = paste( nom_dpt, "(", num_circ, ")<hr/>", paste( summary, collapse = "<br/>"), sep = "" )[1]
-    ) %>%
-    left_join( circos@data, ., by = c("code_dpt", "num_circ"))
+    )
 
   selected_region <- reactive({
     region_ <- input$premier_region
@@ -295,7 +300,8 @@ server <- shinyServer(function(input, output, session){
   })
 
   data_premier <- reactive({
-      data <- data_premier_all %>%
+
+      data_premier_all %>%
         filter(
           Score >= input$premier_pourcentage_inscrits[1],
           Score <= input$premier_pourcentage_inscrits[2],
@@ -314,11 +320,11 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$carte_premier <- renderLeaflet({
-    data <- data_premier()
+    data <- filter( data_premier(), ID %in% circos@data$ID )
     col  <- unname(couleurs[ as.character(data$Nuances) ])
     labels <- data$summary %>% map(HTML)
 
-    circos <- circos[ circos@data$ID %in% data$ID , , drop = FALSE]
+    circos <- circos[ match( data$ID, circos@data$ID )  , , drop = FALSE]
 
     leaflet(circos) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
@@ -351,7 +357,7 @@ server <- shinyServer(function(input, output, session){
   data_premier_details <- reactive({
     sel <- selected()
     data <- premier_tour %>%
-      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
@@ -375,7 +381,7 @@ server <- shinyServer(function(input, output, session){
       nom_dpt
 
     data <- premier_tour %>%
-      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
       head(1)
 
     sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
@@ -386,7 +392,6 @@ server <- shinyServer(function(input, output, session){
     nuance <- input$sel_ballotage
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
-      left_join( circos@data, by = c( dpt = "code_dpt", circ = "num_circ" ) ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Score) )
 
@@ -445,7 +450,7 @@ server <- shinyServer(function(input, output, session){
   data_ballotage_details <- reactive({
     sel <- selected_ballotage()
     data <- premier_tour %>%
-      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
@@ -462,7 +467,7 @@ server <- shinyServer(function(input, output, session){
       nom_dpt
 
     data <- premier_tour %>%
-      filter( dpt == sel$dpt_, circ == sel$circ_ ) %>%
+      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
       head(1)
 
     sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
