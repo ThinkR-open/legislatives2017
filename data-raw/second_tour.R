@@ -32,7 +32,7 @@ fix_dpt <- function(dpt){
   dpt[ dpt == "986" ] <- "ZW"
   dpt[ dpt == "977" ] <- "ZX"
 
-  dpt[ grepl("^\\d$", dpt) ] <- sprintf("%02d", as.numeric(dpt[ grepl("^\\d$", dpt ) ]))
+  dpt <- str_replace( dpt, "^0", "")
 
   dpt
 }
@@ -69,6 +69,28 @@ get_resultats_tour_2 <- function( page, pb = NULL){
   res
 }
 
+get_mentions_tour_2 <- function(page, pb = NULL){
+  if( !is.null(pb)) setTxtProgressBar( pb, getTxtProgressBar(pb) + 1)
+
+  tables <- page %>%
+    html_nodes(".tableau-mentions")
+
+  if( length(tables) == 1) return(NULL)
+
+  data <- html_table( tables[[1]] )
+
+  Nombre <- as.numeric(str_replace( data$Nombre, " ", "" ))
+  data_frame(
+    Inscrits = Nombre[1],
+    Abstentions = Nombre[2],
+    Votants = Nombre[3],
+    Blancs = Nombre[4],
+    Nuls = Nombre[5],
+    Exprimes = Nombre[6]
+  )
+}
+
+
 
 departements <- read_html("http://elections.interieur.gouv.fr/legislatives-2017/") %>%
   html_nodes( "option" ) %>%
@@ -84,6 +106,28 @@ circonscriptions <- departements %>%
 
 message("resultats tour 2")
 pb <- txtProgressBar(min = 0, max = nrow(circonscriptions), style = 3)
-resultats_tour_2 <- circonscriptions$page %>%
-  map( get_resultats_tour_2 )
+resultats_tour_2 <- map( circonscriptions$page, get_resultats_tour_2, pb = pb )
+
+message("mentions tour 2")
+pb <- txtProgressBar(min = 0, max = nrow(circonscriptions), style = 3)
+mentions_tour_2 <- bind_rows( map( circonscriptions$page, get_mentions_tour_2, pb = pb ) )
+
+second_tour <- circonscriptions %>%
+  rename( code_dpt = dpt, num_circ = circ ) %>%
+  select(-page) %>%
+  mutate( code_dpt = fix_dpt(code_dpt) ) %>%
+  left_join( regions, by = "code_dpt") %>%
+  mutate(
+    num_circ = as.numeric(num_circ),
+    resultats = resultats_tour_2
+  ) %>%
+  filter( map_lgl(resultats,~!is.null(.) ) ) %>%
+  bind_cols( mentions_tour_2 ) %>%
+  unnest() %>%
+  mutate(
+    civilite = ifelse(grepl("^M[.]", candidat), "M.","Mme"),
+    candidat = str_replace_all(candidat, "^Mm?e?[.]? ", "")
+  )
+
+use_data( second_tour, overwrite = TRUE )
 

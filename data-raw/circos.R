@@ -18,9 +18,9 @@ circos@data <- as_tibble(mutate( circos@data,
 use_data( circos, overwrite = TRUE )
 
 expat <- data_frame(
-  code_dpt = "099",
+  code_dpt = "99",
   nom_dpt = "Français établis hors de France",
-  code_reg = "099",
+  code_reg = "99",
   nom_reg = "Français établis hors de France"
 )
 
