@@ -173,3 +173,9 @@ second_tour <- get_resultats_tour( departements, circonscriptions, get_resultats
 use_data( premier_tour, overwrite = TRUE )
 use_data( second_tour, overwrite = TRUE )
 
+assemblee <- bind_rows(
+  filter( premier_tour, resultat == "elu") %>% mutate( tour = 1),
+  filter( second_tour, resultat == "elu") %>% mutate( tour = 2)
+)
+use_data( assemblee, overwrite = TRUE)
+
