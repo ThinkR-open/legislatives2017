@@ -1,8 +1,17 @@
 library(readr)
 library(dplyr)
-library(geojsonio)
+library(sf)
 library(tibble)
 library(stringr)
+
+circonscriptions <- read_sf( "data-raw/france-circonscriptions-legislatives-2012.json" ) %>%
+  mutate(
+    num_circ = as.numeric(num_circ),
+    nom_dpt = str_to_title(nom_dpt),
+    nom_reg = str_to_title(nom_reg)
+  )
+
+use_data( circonscriptions, overwrite = TRUE )
 
 circos <- geojson_read( "data-raw/france-circonscriptions-legislatives-2012.json", method = "local", what = "sp")
 
