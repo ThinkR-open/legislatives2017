@@ -108,6 +108,23 @@ tabPanel_elections <- function( title, carte, ... ){
   )
 }
 
+electionsLeaflet <- function(data){
+  data %>%
+    right_join( circonscriptions, ., by = "ID") %>%
+    leaflet() %>%
+    addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
+    setView(lng = 5, lat= 47, zoom=7) %>%
+    addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
+      highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
+      labelOptions = labelOptions(
+        style = list("font-weight" = "normal", padding = "3px 8px"),
+        textsize = "15px",
+        direction = "auto"
+      ),
+      layerId = ~ID
+    )
+}
+
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
   navbarMenu("Premier tour",
@@ -295,22 +312,7 @@ server <- shinyServer(function(input, output, session){
         )
   })
 
-  output$carte_abstention <- renderLeaflet({
-    data <- data_abstention() %>%
-      right_join( circonscriptions, ., by = "ID" )
-
-    leaflet(data) %>%
-      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "15px",
-          direction = "auto"
-        )
-      )
-  })
+  output$carte_abstention <- renderLeaflet( electionsLeaflet( data_abstention() ) )
 
   output$data_abstention <- DT::renderDataTable({
     data <- select(data_abstention(), nom_reg, nom_dpt, num_circ, p_abstentions ) %>%
@@ -397,49 +399,26 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_premier <- renderLeaflet({
+  output$carte_premier <- renderLeaflet( electionsLeaflet(data_premier()) )
 
-    data <- data_premier() %>%
-      right_join( circonscriptions, ., by = "ID")
-
-    leaflet(data) %>%
-      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "15px",
-          direction = "auto"
-        ),
-        layerId = paste(data$code_dpt, "-", data$num_circ, sep = "")
-      )
-  })
-
-
-  premier_selected <- reactiveValues( data = list( dpt_ = "34", circ_ = 2 ) )
+  premier_selected <- reactiveValues( data = "34002" )
   selected <- reactive(premier_selected$data)
 
   observeEvent( input$carte_premier_shape_click, {
-    click <- strsplit(input$carte_premier_shape_click$id, "-")[[1]]
-    premier_selected$data <- list( dpt_ = click[1], circ_ = click[2] )
+    premier_selected$data <- input$carte_premier_shape_click$id
   })
 
   observeEvent( input$data_premier_rows_selected, {
       data <- slice( data_premier(), input$data_premier_rows_selected )
-      premier_selected$data <- list( dpt_ = data$code_dpt, circ_ = data$num_circ )
+      premier_selected$data <- sprintf( "%s%03d", data$code_dpt,data$num_circ )
   })
 
   data_premier_details <- reactive({
-    sel <- selected()
-    data <- premier_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
+    premier_tour %>%
+      filter( ID == selected() ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
-
-    data
-
   })
 
   output$miniplot_details <- renderPlot({
@@ -451,20 +430,15 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$selected_circonscription <- renderText({
-    sel <- selected()
-    dpt <- filter( premier_tour, code_dpt == sel$dpt_ ) %>%
-      head(1) %$%
-      nom_dpt
-
-    data <- premier_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
-      head(1)
-
-    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
-      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
+    premier_tour %>%
+      filter( ID == selected() ) %>%
+      head(1) %>%
+      mutate(
+        text =  sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+          nom_dpt, num_circ, Inscrits, Exprimes, p_abstentions )
+      ) %>%
+      pull()
   })
-
-
 
 
   ## tab ballotage
@@ -484,23 +458,7 @@ server <- shinyServer(function(input, output, session){
   })
 
 
-  output$carte_ballotage <- renderLeaflet({
-    data <- data_ballotage() %>%
-      right_join( circonscriptions, ., by = "ID")
-
-    leaflet(data) %>%
-      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=7) %>%
-      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "15px",
-          direction = "auto"
-        ),
-        layerId = ~ID
-      )
-  })
+  output$carte_ballotage <- renderLeaflet( electionsLeaflet(data_ballotage()) )
 
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
@@ -624,26 +582,9 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_second <- renderLeaflet({
-    data <- data_second() %>%
-      right_join( circonscriptions, ., by = "ID" )
+  output$carte_second <- renderLeaflet( electionsLeaflet(data_second()) )
 
-    leaflet(data) %>%
-      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "15px",
-          direction = "auto"
-        ),
-        layerId = ~ID
-      )
-  })
-
-
-  second_selected <- reactiveValues( data = "34002" )
+    second_selected <- reactiveValues( data = "34002" )
   selected2 <- reactive(second_selected$data)
 
   observeEvent( input$carte_second_shape_click, {
@@ -755,24 +696,7 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_assemblee <- renderLeaflet({
-    data <- data_assemblee() %>%
-      right_join( circonscriptions, ., by = "ID")
-
-    leaflet(data) %>%
-      addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=7) %>%
-      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
-        highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
-        labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
-          textsize = "15px",
-          direction = "auto"
-        ),
-        layerId = ~ID
-      )
-  })
-
+  output$carte_assemblee <- renderLeaflet(electionsLeaflet( data_assemblee() ))
 
   assemblee_selected <- reactiveValues( data = "34002" )
   selected3 <- reactive(assemblee_selected$data)
