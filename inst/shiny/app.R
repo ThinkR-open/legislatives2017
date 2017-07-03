@@ -297,7 +297,7 @@ server <- shinyServer(function(input, output, session){
     abst <- data$p_abstentions / 100
     abst[is.na(abst)] <- 0
     val <- 1 - ( abst - .18 ) / ( .91 - .18 )
-    col <- gray(1-val)
+    col <- gray(val)
 
     labels <- with( data, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
       map(HTML)

@@ -26,17 +26,9 @@ circos@data <- as_tibble(mutate( circos@data,
 ))
 use_data( circos, overwrite = TRUE )
 
-expat <- data_frame(
-  code_dpt = "99",
-  nom_dpt = "Français établis hors de France",
-  code_reg = "99",
-  nom_reg = "Français établis hors de France"
-)
-
 regions <- circos@data %>%
   select( code_dpt, nom_dpt, nom_reg, code_reg ) %>%
   distinct(code_dpt, code_reg, .keep_all = TRUE) %>%
-  bind_rows( expat ) %>%
   mutate(
     nom_reg = str_replace_all( nom_reg, "[-]", " "),
     nom_dpt = str_replace_all( nom_dpt, "[-]", " ")
