@@ -1,6 +1,11 @@
+library(purrr)
+library(jsonlite)
+
 f <- function( circ = 1, lng1, lng2, lat1, lat2){
   lng <- rep( c(lng1, lng2), each = 2 )
-  lat <- c(lat1, lat2, lat2, lat1 )
+
+  lng <- c(lng1, lng1, lng2, lng2, lng1 )
+  lat <- c(lat1, lat2, lat2, lat1, lat1 )
 
   data <- tibble(
     type = "Feature",

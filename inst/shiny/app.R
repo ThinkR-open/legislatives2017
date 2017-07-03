@@ -288,26 +288,21 @@ server <- shinyServer(function(input, output, session){
           nom_dpt %in% abst_selected_departement(),
           p_abstentions >= abst_pourcentage()[1],
           p_abstentions <= abst_pourcentage()[2]
+        ) %>%
+        mutate(
+          col = gray( 1 - ( p_abstentions/100-.18 ) / (.91-.18) ),
+          label = map( sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions ), HTML )
         )
   })
 
   output$carte_abstention <- renderLeaflet({
-    data <- filter( data_abstention(), ID %in% circos@data$ID )
+    data <- data_abstention() %>%
+      right_join( circonscriptions, ., by = "ID" )
 
-    abst <- data$p_abstentions / 100
-    abst[is.na(abst)] <- 0
-    val <- 1 - ( abst - .18 ) / ( .91 - .18 )
-    col <- gray(val)
-
-    labels <- with( data, sprintf( "%s (circonscription %d) <hr/>%d inscrits<br/>%d abstentions (%4.2f %%)", nom_dpt, num_circ, Inscrits, Abstentions, p_abstentions )) %>%
-      map(HTML)
-
-    circos <- circos[ match( data$ID, circos@data$ID ), ]
-
-    leaflet(circos) %>%
+    leaflet(data) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
         highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
@@ -380,7 +375,6 @@ server <- shinyServer(function(input, output, session){
   })
 
   data_premier <- reactive({
-
       data_premier_all %>%
         filter(
           Score >= input$premier_pourcentage_inscrits[1],
@@ -388,7 +382,11 @@ server <- shinyServer(function(input, output, session){
           nom_dpt %in% selected_departement() ,
           nom_reg %in% selected_region() ,
           Nuances %in% selected_nuance()
-         )
+        ) %>%
+        mutate(
+          col = unname(html_couleurs[ as.character(Nuances) ]),
+          label = map(summary, HTML)
+        )
   })
 
   output$data_premier <- DT::renderDataTable({
@@ -400,16 +398,14 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$carte_premier <- renderLeaflet({
-    data <- filter( data_premier(), ID %in% circos@data$ID )
-    col  <- unname(html_couleurs[ as.character(data$Nuances) ])
-    labels <- data$summary %>% map(HTML)
 
-    circos <- circos[ match( data$ID, circos@data$ID )  , , drop = FALSE]
+    data <- data_premier() %>%
+      right_join( circonscriptions, ., by = "ID")
 
-    leaflet(circos) %>%
+    leaflet(data) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
         highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
@@ -477,33 +473,32 @@ server <- shinyServer(function(input, output, session){
     nuance <- input$sel_ballotage
 
     filter( premier_tour, Nuances == nuance, resultat == "ballotage" ) %>%
-      mutate( Score = round(Score, 2)) %>%
+      mutate(
+        Score = round(Score, 2),
+        col = html_couleurs[nuance],
+        label = map( sprintf("%s (%4.2f)", candidat, Score ), HTML )
+      ) %>%
       arrange( desc(Score) )
+
 
   })
 
 
   output$carte_ballotage <- renderLeaflet({
-    nuance <- input$sel_ballotage
-    data <- data_ballotage()
+    data <- data_ballotage() %>%
+      right_join( circonscriptions, ., by = "ID")
 
-    col  <- unname(html_couleurs[nuance])
-
-    labels <- with(data, sprintf("%s (%4.2f)", candidat, Score )) %>% map(HTML)
-
-    circos <- circos[ na.omit(match( data$ID, circos@data$ID)), , drop = FALSE ]
-
-    leaflet(circos) %>%
+    leaflet(data) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+      setView(lng = 5, lat= 47, zoom=7) %>%
+      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
         highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
           direction = "auto"
         ),
-        layerId = paste(circos@data$code_dpt, "-", circos@data$num_circ, sep = "")
+        layerId = ~ID
       )
   })
 
@@ -528,14 +523,13 @@ server <- shinyServer(function(input, output, session){
   })
 
   selected_ballotage <- eventReactive(input$carte_ballotage_shape_click, {
-    click <- strsplit(input$carte_ballotage_shape_click$id, "-")[[1]]
-    list( dpt_ = click[1], circ_ = click[2])
+    input$carte_ballotage_shape_click$id
   })
 
   data_ballotage_details <- reactive({
     sel <- selected_ballotage()
     data <- premier_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
+      filter( ID == sel ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
@@ -547,16 +541,15 @@ server <- shinyServer(function(input, output, session){
 
   output$selected_ballotage_circonscription <- renderText({
     sel <- selected_ballotage()
-    dpt <- filter( circos@data, code_dpt == sel$dpt_ ) %>%
-      head(1) %$%
-      nom_dpt
 
     data <- premier_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
-      head(1)
+      filter( ID == sel) %>%
+      head(1) %>%
+      mutate( text = sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+        nom_dpt, num_circ, Inscrits, Exprimes, p_abstentions )
+      ) %>%
+      pull()
 
-    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
-      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
   })
 
 
@@ -616,6 +609,10 @@ server <- shinyServer(function(input, output, session){
         nom_dpt %in% second_selected_departement() ,
         nom_reg %in% second_selected_region() ,
         Nuances %in% second_selected_nuance()
+      ) %>%
+      mutate(
+        col = unname(html_couleurs[ as.character(Nuances) ]),
+        label = map( summary, HTML)
       )
   })
 
@@ -628,44 +625,40 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$carte_second <- renderLeaflet({
-    data <- filter( data_second(), ID %in% circos@data$ID )
-    col  <- unname(html_couleurs[ as.character(data$Nuances) ])
-    labels <- data$summary %>% map(HTML)
+    data <- data_second() %>%
+      right_join( circonscriptions, ., by = "ID" )
 
-    circos <- circos[ match( data$ID, circos@data$ID )  , , drop = FALSE]
-
-    leaflet(circos) %>%
+    leaflet(data) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
       setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
         highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
           direction = "auto"
         ),
-        layerId = paste(data$code_dpt, "-", data$num_circ, sep = "")
+        layerId = ~ID
       )
   })
 
 
-  second_selected <- reactiveValues( data = list( dpt_ = "34", circ_ = 2 ) )
+  second_selected <- reactiveValues( data = "34002" )
   selected2 <- reactive(second_selected$data)
 
   observeEvent( input$carte_second_shape_click, {
-    click <- strsplit(input$carte_second_shape_click$id, "-")[[1]]
-    second_selected$data <- list( dpt_ = click[1], circ_ = click[2] )
+    second_selected$data <- input$carte_second_shape_click$id
   })
 
   observeEvent( input$data_second_rows_selected, {
     data <- slice( data_second(), input$data_second_rows_selected )
-    second_selected$data <- list( dpt_ = data$code_dpt, circ_ = data$num_circ )
+    second_selected$data <- sprintf( "%s%03d", data$code_dpt, data$num_circ )
   })
 
   data_second_details <- reactive({
     sel <- selected2()
     data <- second_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
+      filter( ID == sel ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
@@ -683,17 +676,14 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$second_selected_circonscription <- renderText({
-    sel <- selected2()
-    dpt <- filter( second_tour, code_dpt == sel$dpt_ ) %>%
-      head(1) %$%
-      nom_dpt
-
-    data <- second_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
-      head(1)
-
-    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
-      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
+    second_tour %>%
+      filter( ID == selected2() ) %>%
+      head(1) %>%
+      mutate(
+        text =  sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+          nom_dpt, num_circ, Inscrits, Exprimes, p_abstentions )
+      ) %>%
+      pull()
   })
 
 
@@ -750,6 +740,10 @@ server <- shinyServer(function(input, output, session){
         nom_dpt %in% assemblee_selected_departement() ,
         nom_reg %in% assemblee_selected_region() ,
         Nuances %in% assemblee_selected_nuance()
+      ) %>%
+      mutate(
+        col = unname(html_couleurs[ as.character(Nuances) ]),
+        label = map( summary, HTML)
       )
   })
 
@@ -762,64 +756,51 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$carte_assemblee <- renderLeaflet({
-    data <- filter( data_assemblee(), ID %in% circos@data$ID )
-    col  <- unname(html_couleurs[ as.character(data$Nuances) ])
-    labels <- data$summary %>% map(HTML)
+    data <- data_assemblee() %>%
+      right_join( circonscriptions, ., by = "ID")
 
-    circos <- circos[ match( data$ID, circos@data$ID )  , , drop = FALSE]
-
-    leaflet(circos) %>%
+    leaflet(data) %>%
       addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
-      setView(lng = 5, lat= 47, zoom=6) %>%
-      addPolygons( color = "black", weight = .5, fillColor = col, fill = TRUE, fillOpacity = .7, label = labels,
+      setView(lng = 5, lat= 47, zoom=7) %>%
+      addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
         highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "15px",
           direction = "auto"
         ),
-        layerId = paste(data$code_dpt, "-", data$num_circ, sep = "")
+        layerId = ~ID
       )
   })
 
 
-  assemblee_selected <- reactiveValues( data = list( dpt_ = "34", circ_ = 2 ) )
+  assemblee_selected <- reactiveValues( data = "34002" )
   selected3 <- reactive(assemblee_selected$data)
 
   observeEvent( input$carte_assemblee_shape_click, {
-    click <- strsplit(input$carte_assemblee_shape_click$id, "-")[[1]]
-    assemblee_selected$data <- list( dpt_ = click[1], circ_ = click[2] )
+    assemblee_selected$data <- input$carte_assemblee_shape_click$id
   })
 
   observeEvent( input$data_assemblee_rows_selected, {
     data <- slice( data_assemblee(), input$data_assemblee_rows_selected )
-    assemblee_selected$data <- list( dpt_ = data$code_dpt, circ_ = data$num_circ )
+    assemblee_selected$data <- sprintf( "%s%03d", data$code_dpt, data$num_circ )
   })
 
   data_assemblee_details_tour1 <- reactive({
-    sel <- selected3()
-    data <- premier_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
+    premier_tour %>%
+      filter( ID == selected3()  ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
-
-    data
-
   })
 
   data_assemblee_details_tour2 <- reactive({
-    sel <- selected3()
-    data <- second_tour %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
+    second_tour %>%
+      filter( ID == selected3() ) %>%
       select( candidat, Nuances, Voix, Score, resultat ) %>%
       mutate( Score = round(Score, 2)) %>%
       arrange( desc(Voix) )
-
-    data
-
   })
-
 
   output$assemblee_miniplot_details_tour1 <- renderPlot({
     with( data_assemblee_details_tour1(), miniplot( Score, Nuances ) )
@@ -838,17 +819,14 @@ server <- shinyServer(function(input, output, session){
   })
 
   output$assemblee_selected_circonscription <- renderText({
-    sel <- selected3()
-    dpt <- filter( assemblee, code_dpt == sel$dpt_ ) %>%
-      head(1) %$%
-      nom_dpt
-
-    data <- assemblee %>%
-      filter( code_dpt == sel$dpt_, num_circ == sel$circ_ ) %>%
-      head(1)
-
-    sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
-      dpt, sel$circ_, data$Inscrits, data$Exprimes, round(100*data$Abstentions/data$Inscrits, 2) )
+    assemblee %>%
+      filter( ID == selected3() ) %>%
+      head(1) %>%
+      mutate(
+        text = sprintf( "%s (%s). %d inscrits, %d exprimés. abstention: %4.2f",
+          nom_dpt, num_circ, Inscrits, Exprimes, p_abstentions )
+      ) %>%
+      pull()
   })
 
 
