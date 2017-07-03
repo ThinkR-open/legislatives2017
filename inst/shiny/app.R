@@ -7,7 +7,7 @@ library(htmltools)
 library(purrr)
 library(ggplot2)
 library(magrittr)
-library(sp)
+library(sf)
 
 couleurs <- c(
   REM  = "orange",
