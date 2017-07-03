@@ -9,6 +9,8 @@ library(ggplot2)
 library(magrittr)
 library(sf)
 
+isolate <- shiny::isolate
+
 couleurs <- c(
   REM  = "orange",
   MDM = "darkorange2",
@@ -108,9 +110,9 @@ tabPanel_elections <- function( title, carte, ... ){
   )
 }
 
-electionsLeaflet <- function(data){
+franceLeaflet <- function(data){
   data %>%
-    right_join( circonscriptions, ., by = "ID") %>%
+    right_join( circonscriptions, ., by = "ID" ) %>%
     leaflet() %>%
     addTiles( urlTemplate = 'http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png' ) %>%
     setView(lng = 5, lat= 47, zoom=7) %>%
@@ -124,6 +126,22 @@ electionsLeaflet <- function(data){
       layerId = ~ID
     )
 }
+
+refreshElectionsLeaflet <- function( id, data ){
+  leafletProxy(id, data = right_join( circonscriptions, data, by = "ID") ) %>%
+    clearShapes() %>%
+    addPolygons( color = "black", weight = .5, fillColor = ~col, fill = TRUE, fillOpacity = .7, label = ~label,
+      highlightOptions = highlightOptions(weight = 2, fillOpacity = .7, bringToFront = TRUE),
+      labelOptions = labelOptions(
+        style = list("font-weight" = "normal", padding = "3px 8px"),
+        textsize = "15px",
+        direction = "auto"
+      ),
+      layerId = ~ID
+    )
+}
+
+
 
 ui <- navbarPage( "Legislatives 2017", theme = "legislatives.css",
 
@@ -312,7 +330,11 @@ server <- shinyServer(function(input, output, session){
         )
   })
 
-  output$carte_abstention <- renderLeaflet( electionsLeaflet( data_abstention() ) )
+  output$carte_abstention <- renderLeaflet( franceLeaflet( isolate(data_abstention()) ) )
+  observe({
+    refreshElectionsLeaflet( "carte_abstention", data_abstention() )
+  })
+
 
   output$data_abstention <- DT::renderDataTable({
     data <- select(data_abstention(), nom_reg, nom_dpt, num_circ, p_abstentions ) %>%
@@ -399,7 +421,10 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_premier <- renderLeaflet( electionsLeaflet(data_premier()) )
+  output$carte_premier <- renderLeaflet( franceLeaflet( isolate(data_premier()) ) )
+  observe({
+    refreshElectionsLeaflet( "carte_premier", data_premier() )
+  })
 
   premier_selected <- reactiveValues( data = "34002" )
   selected <- reactive(premier_selected$data)
@@ -458,7 +483,10 @@ server <- shinyServer(function(input, output, session){
   })
 
 
-  output$carte_ballotage <- renderLeaflet( electionsLeaflet(data_ballotage()) )
+  output$carte_ballotage <- renderLeaflet( franceLeaflet( isolate(data_ballotage()) ) )
+  observe({
+    refreshElectionsLeaflet( "carte_ballotage", data_ballotage() )
+  })
 
   output$data_ballotage <- DT::renderDataTable({
     data <- data_ballotage() %>%
@@ -582,9 +610,12 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_second <- renderLeaflet( electionsLeaflet(data_second()) )
+  output$carte_second <- renderLeaflet( franceLeaflet( isolate(data_second()) ) )
+  observe({
+    refreshElectionsLeaflet( "carte_second", data_second() )
+  })
 
-    second_selected <- reactiveValues( data = "34002" )
+  second_selected <- reactiveValues( data = "34002" )
   selected2 <- reactive(second_selected$data)
 
   observeEvent( input$carte_second_shape_click, {
@@ -696,7 +727,11 @@ server <- shinyServer(function(input, output, session){
       DT::datatable( options = list(pageLength = 5, scrollY = "200px", searching = FALSE), selection = "single" )
   })
 
-  output$carte_assemblee <- renderLeaflet(electionsLeaflet( data_assemblee() ))
+  output$carte_assemblee <- renderLeaflet( franceLeaflet( isolate(data_assemblee() )) )
+  observe({
+    refreshElectionsLeaflet( "carte_assemblee", data_assemblee() )
+  })
+
 
   assemblee_selected <- reactiveValues( data = "34002" )
   selected3 <- reactive(assemblee_selected$data)
